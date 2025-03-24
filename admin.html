@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة المدير</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>لوحة المدير</h1>
+    <button id="generate-otp" class="btn">توليد OTP</button>
+    <div id="otp-display"></div>
+    
+    <h2>سجل المستخدمين</h2>
+    <table id="login-log">
+      <thead>
+        <tr>
+          <th>اسم المستخدم</th>
+          <th>تاريخ ووقت الدخول</th>
+          <th>عدد المحاولات</th>
+          <th>حالة الباند</th>
+          <th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- عرض السجلات هنا -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // توليد OTP عشوائي مكون من 6 أرقام
+    document.getElementById("generate-otp").addEventListener("click", function(){
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpObj = { otp: otp, used: false, timestamp: Date.now() };
+      localStorage.setItem("currentOTP", JSON.stringify(otpObj));
+      document.getElementById("otp-display").innerHTML = `<p>OTP: <strong>${otp}</strong></p>`;
+    });
+
+    // تحميل سجلات الدخول من localStorage
+    function loadLogs() {
+      const logs = JSON.parse(localStorage.getItem("loginLogs")) || [];
+      const tbody = document.querySelector("#login-log tbody");
+      tbody.innerHTML = "";
+      logs.forEach((log, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${log.username}</td>
+          <td>${new Date(log.time).toLocaleString()}</td>
+          <td>${log.attempts}</td>
+          <td>${log.bannedUntil ? "محظور حتى " + new Date(log.bannedUntil).toLocaleString() : "لا يوجد"}</td>
+          <td>
+            <button onclick="banUser(${index})" class="btn">باند</button>
+            <button onclick="sendMessage('${log.username}')" class="btn">إرسال رسالة</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    loadLogs();
+
+    // تطبيق الباند على مستخدم لفترة يدخلها المدير
+    function banUser(index) {
+      const duration = prompt("أدخل مدة الباند بالدقائق:");
+      if (duration && !isNaN(duration)) {
+        const logs = JSON.parse(localStorage.getItem("loginLogs")) || [];
+        logs[index].bannedUntil = Date.now() + parseInt(duration) * 60000;
+        localStorage.setItem("loginLogs", JSON.stringify(logs));
+        loadLogs();
+      }
+    }
+
+    // محاكاة إرسال رسالة للمستخدم
+    function sendMessage(username) {
+      alert("تم إرسال رسالة إلى " + username);
+    }
+  </script>
+</body>
+</html>

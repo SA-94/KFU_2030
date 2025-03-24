@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تسجيل الدخول</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- طبقة الخلفية المتحركة (الأمواج) -->
+  <div class="waves">
+    <div class="wave wave1"></div>
+    <div class="wave wave2"></div>
+    <div class="wave wave3"></div>
+    <div class="wave wave4"></div>
+  </div>
+
+  <div class="container">
+    <h1>تسجيل الدخول</h1>
+    <form id="login-form">
+      <input type="text" id="username" placeholder="اسم المستخدم" required>
+      <input type="text" id="password" placeholder="كلمة المرور / OTP" required>
+      <div>
+        <input type="checkbox" id="not-robot" required>
+        <label for="not-robot">أنا لست روبوت</label>
+      </div>
+      <button type="submit" class="btn">دخول</button>
+    </form>
+    <div id="error-msg" class="error"></div>
+    <p>إذا لم تكن لديك كلمة المرور، <a href="https://t.me/YourTelegramBot" target="_blank">تواصل هنا</a></p>
+  </div>
+  
+  <script>
+    // الكود الخاص بنموذج الدخول (كما في الإصدارات السابقة)
+    const adminCredentials = { username: "admin", password: "admin123" };
+    const loginForm = document.getElementById("login-form");
+    const errorMsg = document.getElementById("error-msg");
+    let countdownInterval = null;
+
+    function startCountdown(lockUntil) {
+      if(countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        const now = Date.now();
+        if(now >= lockUntil) {
+          clearInterval(countdownInterval);
+          errorMsg.textContent = "";
+        } else {
+          let remaining = Math.ceil((lockUntil - now) / 1000);
+          errorMsg.textContent = "انتظر " + remaining + " ثانية قبل المحاولة.";
+        }
+      }, 1000);
+    }
+
+    loginForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const now = Date.now();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const notRobot = document.getElementById("not-robot").checked;
+      let userKey = "loginData_" + username;
+      let userData = JSON.parse(localStorage.getItem(userKey)) || { wrongCount: 0, lockUntil: 0 };
+
+      if (now < userData.lockUntil) {
+        startCountdown(userData.lockUntil);
+        return;
+      }
+
+      if (!notRobot) {
+        errorMsg.textContent = "يرجى التأكد من أنك لست روبوت.";
+        return;
+      }
+
+      if (username === adminCredentials.username && password === adminCredentials.password) {
+        localStorage.removeItem(userKey);
+        window.location.href = "admin.html";
+        return;
+      }
+
+      const otpData = JSON.parse(localStorage.getItem("currentOTP"));
+      if (!otpData) {
+        errorMsg.textContent = "لا توجد كلمة مرور متاحة، تواصل مع المدير.";
+        return;
+      }
+      
+      if (password === otpData.otp && !otpData.used) {
+        otpData.used = true;
+        localStorage.setItem("currentOTP", JSON.stringify(otpData));
+        localStorage.removeItem(userKey);
+        window.location.href = "user.html";
+      } else {
+        userData.wrongCount++;
+        let waitTime = 0;
+        if (userData.wrongCount % 3 === 0) {
+          waitTime = 10 * Math.pow(2, Math.floor(userData.wrongCount / 3) - 1);
+        }
+        if (userData.wrongCount === 5) {
+          waitTime = 50;
+        }
+        if (waitTime > 0) {
+          userData.lockUntil = now + waitTime * 1000;
+          errorMsg.textContent = "خطأ في كلمة المرور. انتظر " + waitTime + " ثانية قبل المحاولة.";
+          startCountdown(userData.lockUntil);
+        } else {
+          errorMsg.textContent = "خطأ في كلمة المرور.";
+        }
+        localStorage.setItem(userKey, JSON.stringify(userData));
+      }
+    });
+  </script>
+</body>
+</html>
